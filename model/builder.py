@@ -1,6 +1,9 @@
 import torch
 
 from model.semseg.dpt import DPT
+from model.semseg.dpt_scalematch import DPT_ScaleMatch
+from model.semseg.upernet import UperNet
+from model.semseg.upernet_scalematch import UperNet_ScaleMatch
 
 
 MODEL_CONFIGS = {
@@ -41,13 +44,50 @@ def _unwrap_checkpoint_state_dict(state_dict):
     return cleaned
 
 
-def build_model_from_cfg(cfg):
+def _build_standard_model(cfg):
     backbone_version, encoder_size, patch_size = get_backbone_info(cfg['backbone'])
-    model = DPT(
-        **{**MODEL_CONFIGS[encoder_size], 'nclass': cfg['nclass']},
-        backbone_version=backbone_version,
-    )
-    return model, patch_size
+    model_name = cfg.get('model', 'dpt').lower()
+    model_kwargs = {**MODEL_CONFIGS[encoder_size], 'nclass': cfg['nclass']}
+    if model_name == 'dpt':
+        model = DPT(**model_kwargs, backbone_version=backbone_version)
+        eval_multiplier = patch_size
+    elif model_name == 'upernet':
+        model = UperNet(
+            encoder_size=model_kwargs['encoder_size'],
+            nclass=cfg['nclass'],
+            fpn_channels=cfg.get('fpn_channels', 256),
+            backbone_version=backbone_version,
+        )
+        eval_multiplier = None
+    else:
+        raise ValueError(f"Unsupported model: {cfg.get('model')}")
+    return model, eval_multiplier
+
+
+def _build_scalematch_model(cfg):
+    backbone_version, encoder_size, _ = get_backbone_info(cfg['backbone'])
+    model_name = cfg.get('model', 'dpt').lower()
+    model_kwargs = {**MODEL_CONFIGS[encoder_size], 'nclass': cfg['nclass']}
+    if model_name == 'dpt':
+        model = DPT_ScaleMatch(**model_kwargs, backbone_version=backbone_version)
+    elif model_name == 'upernet':
+        model = UPerNet_ScaleMatch(
+            encoder_size=model_kwargs['encoder_size'],
+            nclass=cfg['nclass'],
+            fpn_channels=cfg.get('fpn_channels', 256),
+            backbone_version=backbone_version,
+        )
+    else:
+        raise ValueError(f"Unsupported ScaleMatch model: {cfg.get('model')}")
+    return model
+
+
+def build_model_from_cfg(cfg):
+    return _build_standard_model(cfg)
+
+
+def build_scalematch_model_from_cfg(cfg):
+    return _build_scalematch_model(cfg)
 
 
 def load_backbone_weights(model, cfg):

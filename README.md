@@ -26,6 +26,8 @@ This fork also adds:
 
 - **DINOv3 small/base** support for the main UniMatch-V2 training pipeline
 - a lightweight **LoRA PEFT** training entrypoint for the main `unimatch_v2` pipeline
+- a standalone **ScaleMatch** training entrypoint for the main semantic-segmentation pipeline
+- **UPerNet** decoder support for ScaleMatch experiments
 
 ## Results
 
@@ -219,6 +221,42 @@ Notes:
 
 - LoRA support is currently implemented only for the main `unimatch_v2` pipeline.
 - This fork keeps saving full training checkpoints (`latest.pth` / `best.pth`) rather than adapter-only checkpoints.
+
+### ScaleMatch
+
+Use the dedicated `scalematch.py` entrypoint to run the official ScaleMatch-style multi-scale training recipe on top of the current DINOv2 / DINOv3 backbones.
+
+Supported ScaleMatch models in this fork:
+
+- `model: dpt`
+- `model: upernet`
+
+If you want the default DPT variant, you can reuse the existing dataset configs (for example `configs/pascal.yaml` or `configs/pascal_dinov3_small.yaml`) and simply switch the method:
+
+```bash
+METHOD=scalematch \
+CONFIG=configs/pascal_dinov3_small.yaml \
+EXP=dinov3_small_scalematch \
+sh scripts/train.sh 4 12345
+```
+
+For UPerNet, a minimal example config is provided at `configs/pascal_scalematch_upernet.yaml`:
+
+```bash
+METHOD=scalematch \
+CONFIG=configs/pascal_scalematch_upernet.yaml \
+EXP=pascal_upernet_scalematch \
+sh scripts/train.sh 4 12345
+```
+
+ScaleMatch-specific config keys accepted by `scalematch.py`:
+
+- `img_scales`
+- `feat_s_scales`
+- `feat_l_scales`
+- `warm_up`
+- `conf_thresh`
+- `fpn_channels` (UPerNet only)
 
 ### FixMatch
 

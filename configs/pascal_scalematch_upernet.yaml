@@ -1,0 +1,26 @@
+# arguments for dataset
+dataset: pascal
+data_root: Your/PASCAL/Path
+nclass: 21
+crop_size: 518
+
+# arguments for training
+epochs: 60
+batch_size: 4 # per GPU x 4 GPUs
+lr: 0.000005
+lr_multi: 40.0
+criterion:
+  name: CELoss
+  kwargs:
+    ignore_index: 255
+conf_thresh: 0.95
+warm_up: 10
+img_scales: [0.5, 0.75, 1.0, 1.25]
+feat_s_scales: [0.75]
+feat_l_scales: [1.0, 1.25, 1.5]
+
+# arguments for model
+model: upernet
+backbone: dinov2_small
+fpn_channels: 256
+lock_backbone: False
