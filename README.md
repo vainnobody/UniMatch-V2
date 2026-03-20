@@ -27,6 +27,7 @@ This fork also adds:
 - **DINOv3 small/base** support for the main UniMatch-V2 training pipeline
 - a lightweight **LoRA PEFT** training entrypoint for the main `unimatch_v2` pipeline
 - a standalone **ScaleMatch** training entrypoint for the main semantic-segmentation pipeline
+- a **ScaleMatch + LoRA PEFT** training entrypoint
 - **UPerNet** decoder support for ScaleMatch experiments
 
 ## Results
@@ -257,6 +258,21 @@ ScaleMatch-specific config keys accepted by `scalematch.py`:
 - `warm_up`
 - `conf_thresh`
 - `fpn_channels` (UPerNet only)
+
+### ScaleMatch + LoRA PEFT
+
+Use `scalematch_peft.py` when you want to fine-tune ScaleMatch with LoRA adapters instead of full backbone updates. It reuses the same LoRA settings and CLI overrides as `unimatch_v2_peft.py`.
+
+Example:
+
+```bash
+METHOD=scalematch_peft \
+CONFIG=configs/pascal_scalematch_dinov3_small_lora.yaml \
+EXP=dinov3_small_scalematch_lora \
+sh scripts/train.sh 4 12345
+```
+
+CLI overrides are also supported, e.g. `--freeze-backbone`, `--lora-r`, `--lora-alpha`, `--lora-dropout`, and `--peft-target-modules`.
 
 ### FixMatch
 
