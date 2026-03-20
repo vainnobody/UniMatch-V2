@@ -16,7 +16,7 @@ from torch.utils.tensorboard import SummaryWriter
 import yaml
 
 from dataset.semi import SemiDataset
-from model.semseg.dpt import DPT
+from model.builder import build_model_from_cfg, load_backbone_weights
 from util.classes import CLASSES
 from util.ohem import ProbOhemCrossEntropy2d
 from util.utils import count_params, AverageMeter, intersectionAndUnion, init_log
@@ -125,16 +125,8 @@ def main():
     cudnn.enabled = True
     cudnn.benchmark = True
 
-    model_configs = {
-        'small': {'encoder_size': 'small', 'features': 64, 'out_channels': [48, 96, 192, 384]},
-        'base': {'encoder_size': 'base', 'features': 128, 'out_channels': [96, 192, 384, 768]},
-        'large': {'encoder_size': 'large', 'features': 256, 'out_channels': [256, 512, 1024, 1024]},
-        'giant': {'encoder_size': 'giant', 'features': 384, 'out_channels': [1536, 1536, 1536, 1536]}
-    }
-    model = DPT(**{**model_configs[cfg['backbone'].split('_')[-1]], 'nclass': cfg['nclass']})
-    
-    state_dict = torch.load(f'./pretrained/{cfg["backbone"]}.pth')
-    model.backbone.load_state_dict(state_dict)
+    model, eval_multiplier = build_model_from_cfg(cfg)
+    load_result = load_backbone_weights(model, cfg)
     
     if cfg['lock_backbone']:
         model.lock_backbone()
@@ -149,6 +141,7 @@ def main():
     
     if rank == 0:
         logger.info('Total params: {:.1f}M\n'.format(count_params(model)))
+        logger.info('Backbone load result: {}\n'.format(load_result))
     
     local_rank = int(os.environ["LOCAL_RANK"])
     model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
@@ -239,7 +232,7 @@ def main():
                 logger.info('Iters: {:}, Total loss: {:.3f}'.format(i, total_loss.avg))
         
         eval_mode = 'sliding_window' if cfg['dataset'] == 'cityscapes' else 'original'
-        mIoU, iou_class = evaluate(model, valloader, eval_mode, cfg, multiplier=14)
+        mIoU, iou_class = evaluate(model, valloader, eval_mode, cfg, multiplier=eval_multiplier)
         
         if rank == 0:
             for (cls_idx, iou) in enumerate(iou_class):

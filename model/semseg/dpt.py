@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from model.backbone.dinov2 import DINOv2
+from model.backbone.dinov3 import DINOv3
 from model.util.blocks import FeatureFusionBlock, _make_scratch
 
 
@@ -117,18 +118,39 @@ class DPT(nn.Module):
         features=128, 
         out_channels=[96, 192, 384, 768], 
         use_bn=False,
+        backbone_version='dinov2',
     ):
         super(DPT, self).__init__()
-        
-        self.intermediate_layer_idx = {
+
+        self.intermediate_layer_idx_v2 = {
             'small': [2, 5, 8, 11],
             'base': [2, 5, 8, 11], 
             'large': [4, 11, 17, 23], 
             'giant': [9, 19, 29, 39]
         }
+
+        self.intermediate_layer_idx_v3 = {
+            'small': [2, 5, 8, 11],
+            'base': [2, 5, 8, 11],
+            'large': [5, 11, 17, 23],
+            'so400m': [6, 13, 20, 26],
+            'huge': [7, 15, 23, 31],
+            'giant': [9, 19, 29, 39],
+        }
         
         self.encoder_size = encoder_size
-        self.backbone = DINOv2(model_name=encoder_size)
+        self.backbone_version = backbone_version
+
+        if backbone_version == 'dinov2':
+            self.backbone = DINOv2(model_name=encoder_size)
+            self.intermediate_layer_idx = self.intermediate_layer_idx_v2
+        elif backbone_version == 'dinov3':
+            self.backbone = DINOv3(model_name=encoder_size)
+            self.intermediate_layer_idx = self.intermediate_layer_idx_v3
+        else:
+            raise ValueError(
+                f"Unknown backbone version: {backbone_version}. Use 'dinov2' or 'dinov3'."
+            )
         
         self.head = DPTHead(nclass, self.backbone.embed_dim, features, use_bn, out_channels=out_channels)
         
@@ -139,7 +161,8 @@ class DPT(nn.Module):
             p.requires_grad = False
     
     def forward(self, x, comp_drop=False):
-        patch_h, patch_w = x.shape[-2] // 14, x.shape[-1] // 14
+        patch_size = self.backbone.patch_size
+        patch_h, patch_w = x.shape[-2] // patch_size, x.shape[-1] // patch_size
         
         features = self.backbone.get_intermediate_layers(
             x, self.intermediate_layer_idx[self.encoder_size]
@@ -158,15 +181,28 @@ class DPT(nn.Module):
             
             dropout_mask = torch.cat((dropout_mask1, dropout_mask2))
             
-            features = (feature * dropout_mask.unsqueeze(1) for feature in features)
+            features = tuple(
+                feature * dropout_mask.unsqueeze(1).to(feature.device)
+                for feature in features
+            )
             
             out = self.head(features, patch_h, patch_w)
             
-            out = F.interpolate(out, (patch_h * 14, patch_w * 14), mode='bilinear', align_corners=True)
+            out = F.interpolate(
+                out,
+                (patch_h * patch_size, patch_w * patch_size),
+                mode='bilinear',
+                align_corners=True,
+            )
             
             return out
         
         out = self.head(features, patch_h, patch_w)
-        out = F.interpolate(out, (patch_h * 14, patch_w * 14), mode='bilinear', align_corners=True)
+        out = F.interpolate(
+            out,
+            (patch_h * patch_size, patch_w * patch_size),
+            mode='bilinear',
+            align_corners=True,
+        )
         
         return out

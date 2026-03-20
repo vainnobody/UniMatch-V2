@@ -22,6 +22,8 @@ class="center">
 
 **TL;DR:** We upgrade our [UniMatch V1](https://github.com/LiheYoung/UniMatch) by switching the outdated ResNet encoders to the most capable DINOv2 encoders. We unify the image-level and feature-level augmentations into a single learnable stream to challenge the powerful model. Based on this, we further design a Complementary Dropout to craft better dual views.
 
+This fork also adds **DINOv3 small/base** support for the main UniMatch-V2 training pipeline.
+
 ## Results
 
 **We provide the [training log of each reported value](https://github.com/LiheYoung/UniMatch-V2/blob/main/training-logs). You can refer to them during reproducing. We also provide all the [checkpoints](https://huggingface.co/LiheYoung/UniMatch-V2/tree/main) of our core experiments.**
@@ -83,12 +85,23 @@ We also apply our UniMatch V2 in the scenarios of semi-supervised [**remote sens
 
 [DINOv2-Small](https://dl.fbaipublicfiles.com/dinov2/dinov2_vits14/dinov2_vits14_pretrain.pth) | [DINOv2-Base](https://dl.fbaipublicfiles.com/dinov2/dinov2_vitb14/dinov2_vitb14_pretrain.pth) | [DINOv2-Large](https://dl.fbaipublicfiles.com/dinov2/dinov2_vitl14/dinov2_vitl14_pretrain.pth)
 
+[DINOv3-Small](https://dl.fbaipublicfiles.com/dinov3/dinov3_vits16/dinov3_vits16_pretrain_lvd1689m-08c60483.pth) | [DINOv3-Base](https://dl.fbaipublicfiles.com/dinov3/dinov3_vitb16/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth)
+
 ```
 ├── ./pretrained
     ├── dinov2_small.pth
     ├── dinov2_base.pth
-    └── dinov2_large.pth
+    ├── dinov2_large.pth
+    ├── dinov3_small.pth
+    └── dinov3_base.pth
 ```
+
+For DINOv3, rename the downloaded checkpoints to `dinov3_small.pth` and `dinov3_base.pth`.
+
+We keep DINOv3 configs separate from the original DINOv2 configs because DINOv3 uses `patch_size=16`. The provided DINOv3 configs use:
+
+- Pascal / ADE20K / COCO: `crop_size: 512`
+- Cityscapes: `crop_size: 800`
 
 ### Datasets
 
@@ -140,6 +153,20 @@ sh scripts/train.sh <num_gpu> <port>
 
 To train on other datasets or splits, please modify
 ``dataset`` and ``split`` in [train.sh](https://github.com/LiheYoung/UniMatch-V2/blob/main/scripts/train.sh).
+
+Examples:
+
+```bash
+# Pascal + DINOv3-Small
+CONFIG=configs/pascal_dinov3_small.yaml \
+EXP=dinov3_small \
+sh scripts/train.sh 4 12345
+
+# Cityscapes + DINOv3-Base
+CONFIG=configs/cityscapes_dinov3_base.yaml \
+EXP=dinov3_base \
+sh scripts/train.sh 4 12345
+```
 
 ### FixMatch
 
