@@ -1,0 +1,30 @@
+# arguments for dataset
+dataset: pascal
+data_root: Your/PASCAL/Path
+nclass: 21
+crop_size: 512
+
+# arguments for training
+epochs: 60
+batch_size: 4 # per GPU x 4 GPUs
+lr: 0.000005
+lr_multi: 40.0
+criterion:
+  name: CELoss
+  kwargs:
+    ignore_index: 255
+conf_thresh: 0.95
+
+# arguments for model
+model: dpt
+backbone: dinov3_small
+lock_backbone: False
+
+# arguments for LoRA PEFT
+peft:
+  method: lora
+  target_modules: ["qkv", "proj", "fc1", "fc2"]
+  freeze_backbone: True
+  r: 32
+  lora_alpha: 64
+  lora_dropout: 0.1

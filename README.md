@@ -22,7 +22,10 @@ class="center">
 
 **TL;DR:** We upgrade our [UniMatch V1](https://github.com/LiheYoung/UniMatch) by switching the outdated ResNet encoders to the most capable DINOv2 encoders. We unify the image-level and feature-level augmentations into a single learnable stream to challenge the powerful model. Based on this, we further design a Complementary Dropout to craft better dual views.
 
-This fork also adds **DINOv3 small/base** support for the main UniMatch-V2 training pipeline.
+This fork also adds:
+
+- **DINOv3 small/base** support for the main UniMatch-V2 training pipeline
+- a lightweight **LoRA PEFT** training entrypoint for the main `unimatch_v2` pipeline
 
 ## Results
 
@@ -167,6 +170,55 @@ CONFIG=configs/cityscapes_dinov3_base.yaml \
 EXP=dinov3_base \
 sh scripts/train.sh 4 12345
 ```
+
+### UniMatch V2 + LoRA PEFT
+
+Use the dedicated `unimatch_v2_peft.py` entrypoint to train LoRA adapters on top of the existing DINOv2 / DINOv3 backbones.
+
+Supported PEFT mode in this fork:
+
+- `lora`
+
+Default LoRA settings:
+
+- `target_modules: ["qkv", "proj", "fc1", "fc2"]`
+- `freeze_backbone: True`
+- `r: 32`
+- `lora_alpha: 64`
+- `lora_dropout: 0.1`
+
+Example:
+
+```bash
+METHOD=unimatch_v2_peft \
+CONFIG=configs/pascal_dinov3_small_lora.yaml \
+EXP=dinov3_small_lora \
+sh scripts/train.sh 4 12345
+```
+
+CLI overrides are also supported:
+
+```bash
+python -m torch.distributed.launch \
+  --nproc_per_node=4 \
+  --master_addr=localhost \
+  --master_port=12345 \
+  unimatch_v2_peft.py \
+  --config configs/pascal_dinov3_small_lora.yaml \
+  --labeled-id-path splits/pascal/366/labeled.txt \
+  --unlabeled-id-path splits/pascal/366/unlabeled.txt \
+  --save-path exp/pascal/unimatch_v2_peft/dinov3_small_lora/366 \
+  --freeze-backbone \
+  --lora-r 16 \
+  --lora-alpha 32 \
+  --lora-dropout 0.05 \
+  --port 12345
+```
+
+Notes:
+
+- LoRA support is currently implemented only for the main `unimatch_v2` pipeline.
+- This fork keeps saving full training checkpoints (`latest.pth` / `best.pth`) rather than adapter-only checkpoints.
 
 ### FixMatch
 

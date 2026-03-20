@@ -3,7 +3,7 @@ job=${JOB:-'pascal_unimatch_v2_dinov2_small_366'}
 
 # modify these augments if you want to try other datasets, splits or methods
 # dataset: ['pascal', 'cityscapes', 'ade20k', 'coco']
-# method: ['unimatch_v2', 'fixmatch', 'supervised']
+# method: ['unimatch_v2', 'unimatch_v2_peft', 'fixmatch', 'supervised']
 # exp: just for specifying the 'save_path'
 # split: ['92', '1_16', ...]. Please check directory './splits/$dataset' for concrete splits
 dataset=${DATASET:-'pascal'}
